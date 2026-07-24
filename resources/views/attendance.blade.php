@@ -123,7 +123,6 @@
     </nav>
 
 
-
     <div class="container mt-4">
 
 
@@ -146,7 +145,6 @@
         @endif
 
 
-
         {{-- Error Message --}}
 
         @if(session('error'))
@@ -166,142 +164,318 @@
         @endif
 
 
-
-
-
         <!-- Statistics Cards -->
 
-        <div class="row mb-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-4">
 
+            <!-- Total Attendance -->
+            <div class="col">
 
-            <div class="col-md-3 mb-3">
-
-                <div class="card shadow card-box bg-primary text-white">
-
+                <div class="card shadow card-box bg-primary text-white h-100">
 
                     <div class="card-body text-center">
 
-
-                        <h6>
-                            Total Attendance
-                        </h6>
-
+                        <h6>Total Attendance</h6>
 
                         <div class="stat-number">
-
                             {{ $totalAttendance ?? 0 }}
-
                         </div>
-
 
                     </div>
 
-
                 </div>
-
 
             </div>
 
+            <!-- Completed Days -->
+            <div class="col">
 
-
-
-            <div class="col-md-3 mb-3">
-
-
-                <div class="card shadow card-box bg-success text-white">
-
+                <div class="card shadow card-box bg-success text-white h-100">
 
                     <div class="card-body text-center">
 
-
-                        <h6>
-                            Completed Days
-                        </h6>
-
+                        <h6>Completed Days</h6>
 
                         <div class="stat-number">
-
                             {{ $completedAttendance ?? 0 }}
-
                         </div>
-
 
                     </div>
 
-
                 </div>
-
 
             </div>
 
+            <!-- Total Break Minutes -->
+            <div class="col">
 
-
-
-            <div class="col-md-3 mb-3">
-
-
-                <div class="card shadow card-box bg-warning">
-
+                <div class="card shadow card-box bg-warning h-100">
 
                     <div class="card-body text-center">
 
-
-                        <h6>
-                            Total Break Minutes
-                        </h6>
-
+                        <h6>Total Break Minutes</h6>
 
                         <div class="stat-number">
-
                             {{ $totalBreakMinutes ?? 0 }}
-
                         </div>
-
 
                     </div>
 
-
                 </div>
-
 
             </div>
 
+            <!-- Working Hours -->
+            <div class="col">
 
-
-
-            <div class="col-md-3 mb-3">
-
-
-                <div class="card shadow card-box bg-info text-white">
-
+                <div class="card shadow card-box bg-info text-white h-100">
 
                     <div class="card-body text-center">
 
-
-                        <h6>
-                            Working Hours
-                        </h6>
-
+                        <h6>Working Hours</h6>
 
                         <div class="stat-number">
-
                             {{ $totalWorkingHours ?? 0 }}
-
                         </div>
-
 
                     </div>
 
-
                 </div>
-
 
             </div>
 
+            <!-- Total Late Days -->
+            <div class="col">
 
+                <div class="card shadow card-box bg-danger text-white h-100">
+
+                    <div class="card-body text-center">
+
+                        <h6>Total Late Days</h6>
+
+                        <div class="stat-number">
+                            {{ $lateDays ?? 0 }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
 
         </div>
 
+        <form method="GET" class="row g-3 mb-4">
+
+            <div class="col-md-4">
+
+                <input
+                    type="month"
+                    name="month"
+                    class="form-control"
+                    value="{{ request('month', now()->format('Y-m')) }}">
+
+            </div>
+
+            <div class="col-md-2">
+
+                <button class="btn btn-primary w-100">
+
+                    View Report
+
+                </button>
+
+            </div>
+
+            <div class="col-md-2">
+
+                <a href="{{ route('attendance') }}"
+                    class="btn btn-secondary w-100">
+
+                    Reset
+
+                </a>
+
+            </div>
+
+        </form>
+
+        <!-- ==========================================
+       Monthly Attendance Report
+      =========================================== -->
+
+        <div class="card shadow mb-4 border-0">
+
+            <div class="card-header bg-dark text-white">
+
+                <h4 class="mb-0">
+                    📊 Monthly Attendance Report
+                    <small class="float-end">
+                        {{ $selectedMonth }}
+                    </small>
+                </h4>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-4">
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-primary text-white text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Present Days</h6>
+
+                                <h2>{{ $monthlyPresentDays }}</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-danger text-white text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Late Days</h6>
+
+                                <h2>{{ $monthlyLateDays }}</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-success text-white text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Working Hours</h6>
+
+                                <h2>{{ $monthlyWorkingHours }}</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-warning text-dark text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Break Hours</h6>
+
+                                <h2>{{ $monthlyBreakHours }}</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-info text-white text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Average Hours</h6>
+
+                                <h2>{{ $averageWorkingHours }}</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4 col-lg-2">
+
+                        <div class="card bg-secondary text-white text-center shadow">
+
+                            <div class="card-body">
+
+                                <h6>Attendance %</h6>
+
+                                <h2>{{ $attendancePercentage }}%</h2>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3">
+
+                    Attendance Progress
+
+                </h5>
+
+                <div class="progress" style="height:30px;">
+
+                    <div
+                        class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                        role="progressbar"
+                        style="width: {{ $attendancePercentage }}%;"
+                        aria-valuenow="{{ $attendancePercentage }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100">
+
+                        {{ $attendancePercentage }}%
+
+                    </div>
+
+                </div>
+
+                <div class="mt-3">
+
+                    @if($attendancePercentage >= 90)
+
+                    <div class="alert alert-success mb-0">
+
+                        🎉 Excellent Attendance!
+
+                    </div>
+
+                    @elseif($attendancePercentage >= 75)
+
+                    <div class="alert alert-warning mb-0">
+
+                        👍 Good Attendance. Keep it up!
+
+                    </div>
+
+                    @else
+
+                    <div class="alert alert-danger mb-0">
+
+                        ⚠ Attendance needs improvement.
+
+                    </div>
+
+                    @endif
+
+                </div>
+
+            </div>
+
+        </div>
 
         <!-- Today's Attendance Card -->
 
@@ -322,9 +496,6 @@
 
             </div>
 
-
-
-
             <div class="card-body">
 
 
@@ -332,8 +503,6 @@
 
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-
-
 
                     <!-- Check In -->
 
@@ -354,10 +523,6 @@
 
 
                     </form>
-
-
-
-
 
                     <!-- Break Start -->
 
@@ -380,9 +545,6 @@
                     </form>
 
 
-
-
-
                     <!-- Break End -->
 
                     <form method="POST"
@@ -402,9 +564,6 @@
 
 
                     </form>
-
-
-
 
 
                     <!-- Check Out -->
@@ -480,8 +639,6 @@
 
                                     </tr>
 
-
-
                                     <tr>
 
                                         <th>
@@ -498,9 +655,6 @@
 
                                     </tr>
 
-
-
-
                                     <tr>
 
                                         <th>
@@ -516,10 +670,6 @@
 
 
                                     </tr>
-
-
-
-
 
                                     <tr>
 
@@ -538,11 +688,6 @@
 
 
                                     </tr>
-
-
-
-
-
 
                                     <tr>
 
@@ -596,23 +741,53 @@
 
 
 
-
-
-
                                     <tr>
 
-
-                                        <th>
-                                            Current Status
-                                        </th>
-
+                                        <th>Attendance Status</th>
 
                                         <td>
 
+                                            @if($attendance->status=='Late')
 
+                                            <span class="badge bg-danger">
+
+                                                🔴 Late
+
+                                            </span>
+
+                                            @else
+
+                                            <span class="badge bg-success">
+
+                                                🟢 On Time
+
+                                            </span>
+
+                                            @endif
+
+                                        </td>
+
+                                    </tr>
+
+                                    <tr>
+
+                                        <th>Late Minutes</th>
+
+                                        <td>
+
+                                            {{ $attendance->late_minutes }} Minutes
+
+                                        </td>
+
+                                    </tr>
+
+                                    <tr>
+
+                                        <th>Current Status</th>
+
+                                        <td>
 
                                             @if($attendance->check_out)
-
 
                                             <span class="badge bg-success">
 
@@ -620,10 +795,7 @@
 
                                             </span>
 
-
-
                                             @elseif($attendance->check_in)
-
 
                                             <span class="badge bg-primary">
 
@@ -631,10 +803,7 @@
 
                                             </span>
 
-
-
                                             @else
-
 
                                             <span class="badge bg-secondary">
 
@@ -642,18 +811,11 @@
 
                                             </span>
 
-
-
                                             @endif
-
-
 
                                         </td>
 
-
                                     </tr>
-
-
 
 
                                 </table>
@@ -668,10 +830,6 @@
 
 
                     </div>
-
-
-
-
 
 
                     <!-- Break History -->
@@ -983,8 +1141,6 @@
                                 </div>
 
 
-
-
                                 <!-- Buttons -->
 
                                 <div class="col-md-3 d-flex align-items-end gap-2">
@@ -1067,8 +1223,6 @@
                     </div>
 
 
-
-
                     <div class="card-body">
 
 
@@ -1086,7 +1240,6 @@
 
 
                                     <tr>
-
 
                                         <th>
                                             #
@@ -1117,6 +1270,9 @@
                                             Working Hours
                                         </th>
 
+                                        <th>Attendance</th>
+
+                                        <th>Late By</th>
 
                                         <th>
                                             Status
@@ -1130,19 +1286,13 @@
 
 
 
-
-
                                 <tbody>
-
-
 
                                     @foreach($attendanceHistory as $index=>$history)
 
 
 
                                     <tr>
-
-
 
                                         <td>
 
@@ -1151,9 +1301,6 @@
                                             }}
 
                                         </td>
-
-
-
 
 
                                         <td>
@@ -1167,9 +1314,6 @@
                                         </td>
 
 
-
-
-
                                         <td>
 
 
@@ -1179,10 +1323,6 @@
 
 
                                         </td>
-
-
-
-
 
 
                                         <td>
@@ -1196,10 +1336,6 @@
                                         </td>
 
 
-
-
-
-
                                         <td>
 
 
@@ -1211,10 +1347,6 @@
 
 
                                         </td>
-
-
-
-
 
 
                                         <td>
@@ -1250,18 +1382,36 @@
                                             @endif
 
 
+                                        </td>
 
+                                        <!-- NEW Attendance Status -->
+                                        <td>
+
+                                            @if($history->status == 'Late')
+
+                                            <span class="badge bg-danger">
+                                                Late
+                                            </span>
+
+                                            @else
+
+                                            <span class="badge bg-success">
+                                                On Time
+                                            </span>
+
+                                            @endif
+
+                                        </td>
+
+                                        <!-- NEW Late Minutes -->
+                                        <td>
+
+                                            {{ $history->late_minutes }} Minutes
 
                                         </td>
 
 
-
-
-
-
                                         <td>
-
-
 
                                             @if($history->check_out)
 
@@ -1286,9 +1436,7 @@
                                             </span>
 
 
-
                                             @else
-
 
 
                                             <span class="badge bg-secondary">
@@ -1297,40 +1445,25 @@
 
                                             </span>
 
-
-
                                             @endif
-
 
 
                                         </td>
 
 
-
-
-
-
                                     </tr>
-
-
 
 
                                     @endforeach
 
 
-
-
                                 </tbody>
-
-
 
 
                             </table>
 
 
                         </div>
-
-
 
 
 
@@ -1373,11 +1506,6 @@
                 @endif
 
 
-
-
-
-
-
                 <!-- Weekend Information -->
 
 
@@ -1398,14 +1526,10 @@
                     Check-in is disabled on weekends.
 
 
-
                 </div>
 
 
                 @endif
-
-
-
 
 
             </div>
@@ -1414,18 +1538,10 @@
         </div>
 
 
-
-
-
-
         <!-- Bootstrap JS -->
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
         </script>
-
-
-
-
 
         <!-- Auto Refresh -->
 
@@ -1439,9 +1555,6 @@
 
             }, 30000);
         </script>
-
-
-
 
 </body>
 
