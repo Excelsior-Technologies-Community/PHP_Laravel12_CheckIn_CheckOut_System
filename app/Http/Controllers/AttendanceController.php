@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Attendance;
 use App\Models\BreakTime;
 use Carbon\Carbon;
@@ -10,16 +11,117 @@ use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
 {
-    // Display attendance page
-    public function index()
+    // Display attendance page with Search, Filter & Dashboard Statistics
+    public function index(Request $request)
     {
         $today = Carbon::today();
+
+        // Today's attendance for logged-in user
         $attendance = Attendance::where('user_id', Auth::id())
-            ->where('date', $today)
+            ->whereDate('date', $today)
             ->with('breaks')
             ->first();
 
-        return view('attendance', compact('attendance'));
+        /*
+    |--------------------------------------------------------------------------
+    | Attendance History Query
+    |--------------------------------------------------------------------------
+    */
+        $query = Attendance::with('user')
+            ->where('user_id', Auth::id());
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search by Date
+    | Example: 2026-07-23
+    |--------------------------------------------------------------------------
+    */
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+                $q->whereDate('date', 'like', "%{$search}%");
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Status Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('status')) {
+
+            switch ($request->status) {
+
+                case 'checked_in':
+                    $query->whereNotNull('check_in')
+                        ->whereNull('check_out');
+                    break;
+
+                case 'checked_out':
+                    $query->whereNotNull('check_out');
+                    break;
+
+                case 'working':
+                    $query->whereNull('check_out');
+                    break;
+
+                case 'completed':
+                    $query->where('total_work_seconds', '>', 0);
+                    break;
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Attendance History
+    |--------------------------------------------------------------------------
+    */
+
+        $attendanceHistory = $query
+            ->oldest('date')
+            ->paginate(5)
+            ->withQueryString();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Dashboard Statistics
+    |--------------------------------------------------------------------------
+    */
+
+        $totalAttendance = Attendance::where('user_id', Auth::id())->count();
+
+        $completedAttendance = Attendance::where('user_id', Auth::id())
+            ->whereNotNull('check_out')
+            ->count();
+
+        $workingToday = Attendance::where('user_id', Auth::id())
+            ->whereDate('date', $today)
+            ->whereNotNull('check_in')
+            ->whereNull('check_out')
+            ->exists();
+
+        $totalBreakMinutes = floor(
+            Attendance::where('user_id', Auth::id())
+                ->sum('total_break_seconds') / 60
+        );
+
+        $totalWorkingHours = round(
+            Attendance::where('user_id', Auth::id())
+                ->sum('total_work_seconds') / 3600,
+            2
+        );
+
+        return view('attendance', [
+            'attendance'          => $attendance,
+            'attendanceHistory'   => $attendanceHistory,
+            'totalAttendance'     => $totalAttendance,
+            'completedAttendance' => $completedAttendance,
+            'workingToday'        => $workingToday,
+            'totalBreakMinutes'   => $totalBreakMinutes,
+            'totalWorkingHours'   => $totalWorkingHours,
+        ]);
     }
 
     // Check In
@@ -51,7 +153,7 @@ class AttendanceController extends Controller
     public function breakStart(Request $request)
     {
         $today = Carbon::today();
-        
+
         // Get today's attendance
         $attendance = Attendance::where('user_id', Auth::id())
             ->where('date', $today)
@@ -84,7 +186,7 @@ class AttendanceController extends Controller
     public function breakEnd(Request $request)
     {
         $today = Carbon::today();
-        
+
         // Get today's attendance
         $attendance = Attendance::where('user_id', Auth::id())
             ->where('date', $today)
@@ -120,7 +222,7 @@ class AttendanceController extends Controller
     public function checkOut(Request $request)
     {
         $today = Carbon::today();
-        
+
         // Get today's attendance
         $attendance = Attendance::where('user_id', Auth::id())
             ->where('date', $today)
@@ -139,7 +241,7 @@ class AttendanceController extends Controller
         // Calculate total time
         $checkIn = Carbon::parse($attendance->check_in);
         $checkOut = Carbon::now();
-        
+
         $totalSeconds = $checkIn->diffInSeconds($checkOut);
         $workSeconds = max(0, $totalSeconds - $attendance->total_break_seconds);
 
@@ -158,7 +260,107 @@ class AttendanceController extends Controller
 
         $hours = floor($workSeconds / 3600);
         $minutes = floor(($workSeconds % 3600) / 60);
-        
+
         return back()->with('success', "Check-out successful! Worked: {$hours} hours {$minutes} minutes");
+    }
+
+    /**
+     * Export Attendance History as CSV
+     */
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $query = Attendance::where('user_id', Auth::id());
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+        if ($request->filled('search')) {
+            $query->whereDate('date', 'like', '%' . $request->search . '%');
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Status Filter
+    |--------------------------------------------------------------------------
+    */
+        if ($request->filled('status')) {
+
+            switch ($request->status) {
+
+                case 'checked_in':
+                    $query->whereNotNull('check_in')
+                        ->whereNull('check_out');
+                    break;
+
+                case 'checked_out':
+                    $query->whereNotNull('check_out');
+                    break;
+
+                case 'working':
+                    $query->whereNull('check_out');
+                    break;
+
+                case 'completed':
+                    $query->where('total_work_seconds', '>', 0);
+                    break;
+            }
+        }
+
+        $records = $query->orderBy('date', 'desc')->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance_history.csv"',
+        ];
+
+        $callback = function () use ($records) {
+
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, [
+                'Date',
+                'Check In',
+                'Check Out',
+                'Break (Minutes)',
+                'Working Hours',
+                'Status',
+            ]);
+
+            foreach ($records as $attendance) {
+
+                $workHours = '';
+
+                if ($attendance->total_work_seconds) {
+
+                    $hours = floor($attendance->total_work_seconds / 3600);
+                    $minutes = floor(($attendance->total_work_seconds % 3600) / 60);
+
+                    $workHours = "{$hours}h {$minutes}m";
+                }
+
+                if ($attendance->check_out) {
+                    $status = 'Completed';
+                } elseif ($attendance->check_in) {
+                    $status = 'Working';
+                } else {
+                    $status = 'Absent';
+                }
+
+                fputcsv($file, [
+                    optional($attendance->date)->format('d-m-Y'),
+                    $attendance->check_in ?? '-',
+                    $attendance->check_out ?? '-',
+                    floor($attendance->total_break_seconds / 60),
+                    $workHours,
+                    $status,
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
