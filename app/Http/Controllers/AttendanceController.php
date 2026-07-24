@@ -113,6 +113,63 @@ class AttendanceController extends Controller
             2
         );
 
+        $lateDays = Attendance::where('user_id', Auth::id())
+            ->where('status', 'Late')
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Monthly Attendance Report
+        |--------------------------------------------------------------------------
+        */
+
+        $currentMonth = $request->month
+            ? Carbon::parse($request->month)->month
+            : Carbon::now()->month;
+
+        $currentYear = $request->month
+            ? Carbon::parse($request->month)->year
+            : Carbon::now()->year;
+
+        $selectedMonth = Carbon::create($currentYear, $currentMonth, 1)
+            ->format('F Y');
+
+        $monthlyAttendance = Attendance::where('user_id', Auth::id())
+            ->whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear);
+
+        $monthlyPresentDays = (clone $monthlyAttendance)->count();
+
+        $monthlyLateDays = (clone $monthlyAttendance)
+            ->where('status', 'Late')
+            ->count();
+
+        $monthlyWorkingSeconds = (clone $monthlyAttendance)
+            ->sum('total_work_seconds');
+
+        $monthlyBreakSeconds = (clone $monthlyAttendance)
+            ->sum('total_break_seconds');
+
+        $monthlyWorkingHours = round($monthlyWorkingSeconds / 3600, 2);
+
+        $monthlyBreakHours = round($monthlyBreakSeconds / 3600, 2);
+
+        $averageWorkingHours = $monthlyPresentDays > 0
+            ? round($monthlyWorkingHours / $monthlyPresentDays, 2)
+            : 0;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Attendance Percentage
+        |--------------------------------------------------------------------------
+        */
+
+        $totalDaysInMonth = Carbon::now()->daysInMonth;
+
+        $attendancePercentage = $totalDaysInMonth > 0
+            ? round(($monthlyPresentDays / $totalDaysInMonth) * 100, 2)
+            : 0;
+
         return view('attendance', [
             'attendance'          => $attendance,
             'attendanceHistory'   => $attendanceHistory,
@@ -121,6 +178,17 @@ class AttendanceController extends Controller
             'workingToday'        => $workingToday,
             'totalBreakMinutes'   => $totalBreakMinutes,
             'totalWorkingHours'   => $totalWorkingHours,
+            'lateDays'            => $lateDays,
+
+            // Monthly Report
+            'monthlyPresentDays'  => $monthlyPresentDays,
+            'monthlyLateDays'     => $monthlyLateDays,
+            'monthlyWorkingHours' => $monthlyWorkingHours,
+            'monthlyBreakHours'   => $monthlyBreakHours,
+            'averageWorkingHours' => $averageWorkingHours,
+            'attendancePercentage' => $attendancePercentage,
+            'selectedMonth' => $selectedMonth,
+
         ]);
     }
 
@@ -139,11 +207,32 @@ class AttendanceController extends Controller
             return back()->with('error', 'Already checked in today!');
         }
 
-        // Create attendance record
+        $checkInTime = Carbon::now();
+
+        $officeStart = Carbon::today()->setTime(9, 30, 0);
+
+        $status = 'On Time';
+
+        $lateMinutes = 0;
+
+        if ($checkInTime->greaterThan($officeStart)) {
+            $status = 'Late';
+
+            $lateMinutes = $officeStart->diffInMinutes($checkInTime);
+        }
+
         Attendance::create([
+
             'user_id' => Auth::id(),
+
             'date' => $today,
-            'check_in' => Carbon::now()->format('H:i:s')
+
+            'check_in' => $checkInTime->format('H:i:s'),
+
+            'status' => $status,
+
+            'late_minutes' => $lateMinutes,
+
         ]);
 
         return back()->with('success', 'Check-in successful!');
@@ -325,6 +414,8 @@ class AttendanceController extends Controller
                 'Check Out',
                 'Break (Minutes)',
                 'Working Hours',
+                'Attendance',
+                'Late Minutes',
                 'Status',
             ]);
 
@@ -354,6 +445,8 @@ class AttendanceController extends Controller
                     $attendance->check_out ?? '-',
                     floor($attendance->total_break_seconds / 60),
                     $workHours,
+                    $attendance->status,
+                    $attendance->late_minutes,
                     $status,
                 ]);
             }
