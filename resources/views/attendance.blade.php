@@ -1,1562 +1,595 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Attendance System</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-        rel="stylesheet">
-
+    <title>Employee Attendance - Check In & Out System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         .card-box {
-            border-radius: 15px;
-            transition: .3s;
+            border-radius: 14px;
+            transition: .25s ease-in-out;
         }
-
         .card-box:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
         }
-
         .stat-number {
-            font-size: 32px;
-            font-weight: bold;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .pulse-badge {
+            animation: pulse-animation 1.5s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
         }
     </style>
-
 </head>
-
-
 <body class="bg-light">
 
-
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-
-            <a class="navbar-brand fw-bold"
-                href="/dashboard">
-
-                Attendance System
-
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ route('attendance') }}">
+                <i class="bi bi-clock-history text-primary"></i>
+                <span>Attendance System</span>
             </a>
 
-
-            <button class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarNav">
-
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
-
             </button>
 
-
-
-            <div class="collapse navbar-collapse"
-                id="navbarNav">
-
-
-                <ul class="navbar-nav ms-auto">
-
-
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-
-                        <a class="nav-link active"
-                            href="/attendance">
-
-                            Attendance
-
+                        <a class="nav-link active fw-bold text-primary" href="{{ route('attendance') }}">
+                            <i class="bi bi-card-checklist me-1"></i> Attendance
                         </a>
-
                     </li>
-
-
-
                     <li class="nav-item">
-
-                        <a class="nav-link"
-                            href="/dashboard">
-
-                            Dashboard
-
+                        <a class="nav-link" href="{{ route('attendance.calendar') }}">
+                            <i class="bi bi-calendar3 me-1"></i> Calendar
                         </a>
-
                     </li>
-
-
-
                     <li class="nav-item">
-
-
-                        <form method="POST"
-                            action="{{ route('logout') }}">
-
-                            @csrf
-
-
-                            <button type="submit"
-                                class="btn btn-link nav-link">
-
-                                Logout
-
-                            </button>
-
-
-                        </form>
-
-
+                        <a class="nav-link" href="{{ route('attendance.timesheet') }}">
+                            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Timesheet
+                        </a>
                     </li>
-
-
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('leaves.index') }}">
+                            <i class="bi bi-airplane me-1"></i> Leaves & WFH
+                        </a>
+                    </li>
+                    @if(Auth::user()->isAdmin())
+                        <li class="nav-item">
+                            <a class="nav-link text-warning fw-semibold" href="{{ route('admin.leaves.index') }}">
+                                <i class="bi bi-shield-lock me-1"></i> Admin Approvals
+                            </a>
+                        </li>
+                    @endif
                 </ul>
 
-
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 text-white" href="#" data-bs-toggle="dropdown">
+                            <span class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center" style="width: 32px; height: 32px; font-size: 13px;">
+                                {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                            </span>
+                            <span>{{ Auth::user()->name }}</span>
+                            @if(Auth::user()->isAdmin())
+                                <span class="badge bg-warning text-dark">Admin</span>
+                            @endif
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li class="px-3 py-2 small text-muted border-bottom">
+                                Signed in as <strong>{{ Auth::user()->email }}</strong>
+                            </li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger py-2">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
             </div>
-
-
         </div>
-
-
     </nav>
 
+    <div class="container py-4">
 
-    <div class="container mt-4">
-
-
-        {{-- Success Message --}}
-
+        {{-- Session Flash Alerts --}}
         @if(session('success'))
-
-        <div class="alert alert-success alert-dismissible fade show">
-
-            {{ session('success') }}
-
-            <button type="button"
-                class="btn-close"
-                data-bs-dismiss="alert">
-
-            </button>
-
-        </div>
-
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         @endif
 
-
-        {{-- Error Message --}}
+        @if(session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-exclamation-circle-fill me-2"></i>{{ session('warning') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
 
         @if(session('error'))
-
-        <div class="alert alert-danger alert-dismissible fade show">
-
-            {{ session('error') }}
-
-            <button type="button"
-                class="btn-close"
-                data-bs-dismiss="alert">
-
-            </button>
-
-        </div>
-
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         @endif
 
+        <!-- Top Header & Quick Action Buttons -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <div>
+                <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Employee Attendance Dashboard</h3>
+                <p class="text-muted small mb-0">Track daily check-ins, breaks, overtime hours, and monthly attendance performance.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('attendance.calendar') }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-calendar3 me-1"></i> Monthly Calendar
+                </a>
+                <a href="{{ route('attendance.timesheet') }}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-printer me-1"></i> Printable Timesheet
+                </a>
+                <a href="{{ route('leaves.index') }}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-airplane me-1"></i> Apply for Leave
+                </a>
+            </div>
+        </div>
 
-        <!-- Statistics Cards -->
-
+        <!-- Overall KPI Cards -->
         <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-4">
-
             <!-- Total Attendance -->
             <div class="col">
-
-                <div class="card shadow card-box bg-primary text-white h-100">
-
-                    <div class="card-body text-center">
-
-                        <h6>Total Attendance</h6>
-
-                        <div class="stat-number">
-                            {{ $totalAttendance ?? 0 }}
-                        </div>
-
+                <div class="card card-box border-0 shadow-sm bg-primary text-white h-100 p-3">
+                    <div class="card-body p-0">
+                        <small class="text-white-50 text-uppercase fw-semibold">Total Days</small>
+                        <div class="stat-number my-1">{{ $totalAttendance }}</div>
+                        <small class="text-white-50">Completed: {{ $completedAttendance }}</small>
                     </div>
-
                 </div>
-
-            </div>
-
-            <!-- Completed Days -->
-            <div class="col">
-
-                <div class="card shadow card-box bg-success text-white h-100">
-
-                    <div class="card-body text-center">
-
-                        <h6>Completed Days</h6>
-
-                        <div class="stat-number">
-                            {{ $completedAttendance ?? 0 }}
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- Total Break Minutes -->
-            <div class="col">
-
-                <div class="card shadow card-box bg-warning h-100">
-
-                    <div class="card-body text-center">
-
-                        <h6>Total Break Minutes</h6>
-
-                        <div class="stat-number">
-                            {{ $totalBreakMinutes ?? 0 }}
-                        </div>
-
-                    </div>
-
-                </div>
-
             </div>
 
             <!-- Working Hours -->
             <div class="col">
-
-                <div class="card shadow card-box bg-info text-white h-100">
-
-                    <div class="card-body text-center">
-
-                        <h6>Working Hours</h6>
-
-                        <div class="stat-number">
-                            {{ $totalWorkingHours ?? 0 }}
-                        </div>
-
+                <div class="card card-box border-0 shadow-sm bg-success text-white h-100 p-3">
+                    <div class="card-body p-0">
+                        <small class="text-white-50 text-uppercase fw-semibold">Working Hours</small>
+                        <div class="stat-number my-1">{{ $totalWorkingHours }}h</div>
+                        <small class="text-white-50">Average shift work</small>
                     </div>
-
                 </div>
-
             </div>
 
-            <!-- Total Late Days -->
+            <!-- Feature 3: Overtime Hours -->
             <div class="col">
-
-                <div class="card shadow card-box bg-danger text-white h-100">
-
-                    <div class="card-body text-center">
-
-                        <h6>Total Late Days</h6>
-
-                        <div class="stat-number">
-                            {{ $lateDays ?? 0 }}
-                        </div>
-
+                <div class="card card-box border-0 shadow-sm bg-info text-white h-100 p-3">
+                    <div class="card-body p-0">
+                        <small class="text-white-50 text-uppercase fw-semibold">Overtime (OT)</small>
+                        <div class="stat-number my-1">+{{ $totalOvertimeHours }}h</div>
+                        <small class="text-white-50">Extra hours accumulated</small>
                     </div>
-
                 </div>
-
             </div>
 
+            <!-- Total Breaks -->
+            <div class="col">
+                <div class="card card-box border-0 shadow-sm bg-secondary text-white h-100 p-3">
+                    <div class="card-body p-0">
+                        <small class="text-white-50 text-uppercase fw-semibold">Break Minutes</small>
+                        <div class="stat-number my-1">{{ $totalBreakMinutes }}m</div>
+                        <small class="text-white-50">Rest & lunch intervals</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Late Arrivals -->
+            <div class="col">
+                <div class="card card-box border-0 shadow-sm bg-danger text-white h-100 p-3">
+                    <div class="card-body p-0">
+                        <small class="text-white-50 text-uppercase fw-semibold">Late Days</small>
+                        <div class="stat-number my-1">{{ $lateDays }}</div>
+                        <small class="text-white-50">After 9:30 AM shift</small>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <form method="GET" class="row g-3 mb-4">
-
-            <div class="col-md-4">
-
-                <input
-                    type="month"
-                    name="month"
-                    class="form-control"
-                    value="{{ request('month', now()->format('Y-m')) }}">
-
-            </div>
-
-            <div class="col-md-2">
-
-                <button class="btn btn-primary w-100">
-
-                    View Report
-
-                </button>
-
-            </div>
-
-            <div class="col-md-2">
-
-                <a href="{{ route('attendance') }}"
-                    class="btn btn-secondary w-100">
-
-                    Reset
-
-                </a>
-
-            </div>
-
-        </form>
-
-        <!-- ==========================================
-       Monthly Attendance Report
-      =========================================== -->
-
-        <div class="card shadow mb-4 border-0">
-
-            <div class="card-header bg-dark text-white">
-
-                <h4 class="mb-0">
-                    📊 Monthly Attendance Report
-                    <small class="float-end">
-                        {{ $selectedMonth }}
-                    </small>
-                </h4>
-
-            </div>
-
-            <div class="card-body">
-
-                <div class="row g-4">
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-primary text-white text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Present Days</h6>
-
-                                <h2>{{ $monthlyPresentDays }}</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-danger text-white text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Late Days</h6>
-
-                                <h2>{{ $monthlyLateDays }}</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-success text-white text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Working Hours</h6>
-
-                                <h2>{{ $monthlyWorkingHours }}</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-warning text-dark text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Break Hours</h6>
-
-                                <h2>{{ $monthlyBreakHours }}</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-info text-white text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Average Hours</h6>
-
-                                <h2>{{ $averageWorkingHours }}</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-4 col-lg-2">
-
-                        <div class="card bg-secondary text-white text-center shadow">
-
-                            <div class="card-body">
-
-                                <h6>Attendance %</h6>
-
-                                <h2>{{ $attendancePercentage }}%</h2>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
+        <!-- Today's Action Center & Presence Box -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-clock me-2 text-primary"></i>Today's Attendance
+                        <span class="text-muted small fw-normal ms-2">({{ now()->format('l, d F Y') }})</span>
+                    </h5>
                 </div>
-
-                <hr>
-
-                <h5 class="mb-3">
-
-                    Attendance Progress
-
-                </h5>
-
-                <div class="progress" style="height:30px;">
-
-                    <div
-                        class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-                        role="progressbar"
-                        style="width: {{ $attendancePercentage }}%;"
-                        aria-valuenow="{{ $attendancePercentage }}"
-                        aria-valuemin="0"
-                        aria-valuemax="100">
-
-                        {{ $attendancePercentage }}%
-
-                    </div>
-
-                </div>
-
-                <div class="mt-3">
-
-                    @if($attendancePercentage >= 90)
-
-                    <div class="alert alert-success mb-0">
-
-                        🎉 Excellent Attendance!
-
-                    </div>
-
-                    @elseif($attendancePercentage >= 75)
-
-                    <div class="alert alert-warning mb-0">
-
-                        👍 Good Attendance. Keep it up!
-
-                    </div>
-
+                <div>
+                    @if($activeBreak)
+                        <span class="badge bg-warning text-dark px-3 py-2 pulse-badge">
+                            <i class="bi bi-cup-hot-fill me-1"></i> ON BREAK SINCE {{ Carbon\Carbon::parse($activeBreak->break_start)->format('h:i A') }}
+                        </span>
+                    @elseif($workingToday)
+                        <span class="badge bg-success px-3 py-2 pulse-badge">
+                            <i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> CURRENTLY WORKING
+                        </span>
+                    @elseif($attendance && $attendance->check_out)
+                        <span class="badge bg-secondary px-3 py-2">
+                            <i class="bi bi-check-all me-1"></i> SHIFT COMPLETED
+                        </span>
                     @else
-
-                    <div class="alert alert-danger mb-0">
-
-                        ⚠ Attendance needs improvement.
-
-                    </div>
-
+                        <span class="badge bg-light text-dark border px-3 py-2">
+                            NOT CHECKED IN YET
+                        </span>
                     @endif
-
                 </div>
-
             </div>
 
-        </div>
-
-        <!-- Today's Attendance Card -->
-
-
-        <div class="card shadow mb-4">
-
-
-            <div class="card-header bg-primary text-white">
-
-
-                <h4 class="mb-0">
-
-                    Today's Attendance
-                    ({{ now()->format('d-m-Y h:i:s A') }})
-
-                </h4>
-
-
-            </div>
-
-            <div class="card-body">
-
-
-                <!-- Action Buttons -->
-
-
+            <div class="card-body p-4">
+                <!-- Action Buttons Toolbar -->
                 <div class="d-flex flex-wrap gap-3 mb-4">
-
                     <!-- Check In -->
-
-                    <form method="POST"
-                        action="{{ route('check-in') }}">
-
+                    <form method="POST" action="{{ route('check-in') }}">
                         @csrf
-
-
-                        <button type="submit"
-                            class="btn btn-success btn-lg">
-
-
-                            Check In
-
-
+                        <button type="submit" class="btn btn-success px-4 py-2 rounded-pill shadow-sm" {{ $attendance && $attendance->check_in ? 'disabled' : '' }}>
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Check In
                         </button>
-
-
                     </form>
 
                     <!-- Break Start -->
-
-                    <form method="POST"
-                        action="{{ route('break-start') }}">
-
+                    <form method="POST" action="{{ route('break-start') }}">
                         @csrf
-
-
-                        <button type="submit"
-                            class="btn btn-warning btn-lg">
-
-
-                            Break Start
-
-
+                        <button type="submit" class="btn btn-warning px-4 py-2 rounded-pill shadow-sm" {{ (!$attendance || !$attendance->check_in || $attendance->check_out || $activeBreak) ? 'disabled' : '' }}>
+                            <i class="bi bi-cup-hot me-1"></i> Start Break
                         </button>
-
-
                     </form>
-
 
                     <!-- Break End -->
-
-                    <form method="POST"
-                        action="{{ route('break-end') }}">
-
+                    <form method="POST" action="{{ route('break-end') }}">
                         @csrf
-
-
-                        <button type="submit"
-                            class="btn btn-info btn-lg text-white">
-
-
-                            Break End
-
-
+                        <button type="submit" class="btn btn-info text-white px-4 py-2 rounded-pill shadow-sm" {{ !$activeBreak ? 'disabled' : '' }}>
+                            <i class="bi bi-cup me-1"></i> End Break
                         </button>
-
-
                     </form>
 
-
-                    <!-- Check Out -->
-
-                    <form method="POST"
-                        action="{{ route('check-out') }}">
-
-                        @csrf
-
-
-                        <button type="submit"
-                            class="btn btn-danger btn-lg">
-
-
-                            Check Out
-
-
+                    <!-- Feature 3: Check Out Button with Graceful Early Departure or Standard Check Out -->
+                    @if($attendance && $attendance->check_in && !$attendance->check_out)
+                        <button type="button" class="btn btn-danger px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#checkOutModal">
+                            <i class="bi bi-box-arrow-right me-1"></i> Check Out
                         </button>
-
-
-                    </form>
-
-
-
+                    @else
+                        <button type="button" class="btn btn-secondary px-4 py-2 rounded-pill" disabled>
+                            <i class="bi bi-box-arrow-right me-1"></i> Check Out
+                        </button>
+                    @endif
                 </div>
 
-                <hr>
-
-
-                {{-- Today's Attendance Details --}}
-
-
+                <!-- Today's Attendance Details & Breaks Table -->
                 @if($attendance)
-
-
-                <div class="row">
-
-
-                    <!-- Attendance Summary -->
-
-                    <div class="col-md-6">
-
-
-                        <div class="card border-primary">
-
-
-                            <div class="card-header bg-primary text-white">
-
-                                <h5 class="mb-0">
-                                    Attendance Summary
-                                </h5>
-
-                            </div>
-
-
-                            <div class="card-body">
-
-
-                                <table class="table table-bordered">
-
-
-                                    <tr>
-
-                                        <th width="40%">
-                                            Date
-                                        </th>
-
-                                        <td>
-
-                                            {{ $attendance->date->format('d-m-Y') }}
-
-                                        </td>
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>
-                                            Check In Time
-                                        </th>
-
-
-                                        <td>
-
-                                            {{ $attendance->check_in ?? 'Not Checked In' }}
-
-                                        </td>
-
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>
-                                            Check Out Time
-                                        </th>
-
-
-                                        <td>
-
-                                            {{ $attendance->check_out ?? 'Not Checked Out' }}
-
-                                        </td>
-
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>
-                                            Total Break Time
-                                        </th>
-
-
-                                        <td>
-
-                                            {{ floor($attendance->total_break_seconds / 60) }}
-                                            Minutes
-
-
-                                        </td>
-
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>
-                                            Working Time
-                                        </th>
-
-
-                                        <td>
-
-
-                                            @if($attendance->total_work_seconds)
-
-
-                                            {{ floor($attendance->total_work_seconds / 3600) }}
-                                            Hours
-
-
-                                            {{ floor(($attendance->total_work_seconds % 3600) / 60) }}
-                                            Minutes
-
-
-                                            @elseif($attendance->check_in)
-
-
-                                            <span class="badge bg-warning text-dark">
-
-                                                Working...
-
-                                            </span>
-
-
-                                            @else
-
-
-                                            <span class="badge bg-secondary">
-
-                                                Not Started
-
-                                            </span>
-
-
-                                            @endif
-
-
-
-                                        </td>
-
-
-                                    </tr>
-
-
-
-                                    <tr>
-
-                                        <th>Attendance Status</th>
-
-                                        <td>
-
-                                            @if($attendance->status=='Late')
-
-                                            <span class="badge bg-danger">
-
-                                                🔴 Late
-
-                                            </span>
-
-                                            @else
-
-                                            <span class="badge bg-success">
-
-                                                🟢 On Time
-
-                                            </span>
-
-                                            @endif
-
-                                        </td>
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>Late Minutes</th>
-
-                                        <td>
-
-                                            {{ $attendance->late_minutes }} Minutes
-
-                                        </td>
-
-                                    </tr>
-
-                                    <tr>
-
-                                        <th>Current Status</th>
-
-                                        <td>
-
-                                            @if($attendance->check_out)
-
-                                            <span class="badge bg-success">
-
-                                                Completed
-
-                                            </span>
-
-                                            @elseif($attendance->check_in)
-
-                                            <span class="badge bg-primary">
-
-                                                Working
-
-                                            </span>
-
-                                            @else
-
-                                            <span class="badge bg-secondary">
-
-                                                Absent
-
-                                            </span>
-
-                                            @endif
-
-                                        </td>
-
-                                    </tr>
-
-
-                                </table>
-
-
-
-                            </div>
-
-
-                        </div>
-
-
-
-                    </div>
-
-
-                    <!-- Break History -->
-
-                    <div class="col-md-6">
-
-
-                        <div class="card border-warning">
-
-
-                            <div class="card-header bg-warning">
-
-
-                                <h5 class="mb-0">
-
-                                    Break History
-
-                                </h5>
-
-
-                            </div>
-
-
-
-                            <div class="card-body">
-
-
-
-                                @if($attendance->breaks->count() > 0)
-
-
-
-                                <div class="table-responsive">
-
-
-                                    <table class="table table-striped">
-
-
-                                        <thead>
-
-
-                                            <tr>
-
-                                                <th>
-                                                    #
-                                                </th>
-
-
-                                                <th>
-                                                    Start
-                                                </th>
-
-
-                                                <th>
-                                                    End
-                                                </th>
-
-
-                                                <th>
-                                                    Duration
-                                                </th>
-
-
-                                            </tr>
-
-
-                                        </thead>
-
-
-
-                                        <tbody>
-
-
-
-                                            @foreach($attendance->breaks as $index=>$break)
-
-
-
-                                            <tr>
-
-
-                                                <td>
-
-                                                    {{ $index + 1 }}
-
-                                                </td>
-
-
-
-                                                <td>
-
-                                                    {{ $break->break_start }}
-
-                                                </td>
-
-
-
-
-                                                <td>
-
-                                                    {{ $break->break_end ?? 'Running' }}
-
-                                                </td>
-
-
-
-
-                                                <td>
-
-
-                                                    @if($break->break_seconds)
-
-
-                                                    {{ floor($break->break_seconds / 60) }}
-                                                    min
-
-
-                                                    @else
-
-
-                                                    -
-
-
-                                                    @endif
-
-
-
-                                                </td>
-
-
-
-                                            </tr>
-
-
-
-                                            @endforeach
-
-
-
-                                        </tbody>
-
-
-
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card border bg-light h-100">
+                                <div class="card-header bg-white py-2 fw-semibold">
+                                    <i class="bi bi-info-circle text-primary me-1"></i> Punch Timestamps
+                                </div>
+                                <div class="card-body p-3">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td class="text-muted" style="width: 40%;">Check In Time:</td>
+                                            <td class="fw-bold">{{ $attendance->check_in ? Carbon\Carbon::parse($attendance->check_in)->format('h:i:s A') : '-' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Check Out Time:</td>
+                                            <td class="fw-bold">{{ $attendance->check_out ? Carbon\Carbon::parse($attendance->check_out)->format('h:i:s A') : 'In progress...' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Break Duration:</td>
+                                            <td class="fw-bold">{{ floor($attendance->total_break_seconds / 60) }} minutes</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Net Work Hours:</td>
+                                            <td class="fw-bold text-primary">{{ $attendance->getWorkHoursFormatted() }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Overtime (OT):</td>
+                                            <td class="fw-bold text-success">{{ $attendance->getOvertimeFormatted() }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Status:</td>
+                                            <td>{!! $attendance->getStatusBadge() !!}</td>
+                                        </tr>
                                     </table>
-
-
                                 </div>
-
-
-
-                                @else
-
-
-                                <div class="alert alert-info">
-
-
-                                    No breaks taken today.
-
-
-                                </div>
-
-
-
-                                @endif
-
-
-
-
                             </div>
-
-
                         </div>
 
-
+                        <div class="col-md-6">
+                            <div class="card border bg-light h-100">
+                                <div class="card-header bg-white py-2 fw-semibold">
+                                    <i class="bi bi-cup-hot text-warning me-1"></i> Today's Break Log ({{ $attendance->breaks->count() }})
+                                </div>
+                                <div class="card-body p-3">
+                                    @if($attendance->breaks->isEmpty())
+                                        <p class="text-muted small mb-0 py-3 text-center">No breaks taken today yet.</p>
+                                    @else
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered bg-white mb-0">
+                                                <thead class="table-light small">
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Start</th>
+                                                        <th>End</th>
+                                                        <th>Duration</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($attendance->breaks as $idx => $brk)
+                                                        <tr>
+                                                            <td>{{ $idx + 1 }}</td>
+                                                            <td>{{ Carbon\Carbon::parse($brk->break_start)->format('h:i A') }}</td>
+                                                            <td>{{ $brk->break_end ? Carbon\Carbon::parse($brk->break_end)->format('h:i A') : 'Active' }}</td>
+                                                            <td>{{ floor($brk->break_seconds / 60) }} mins</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-
-
-                </div>
-
-
-
-
                 @else
-
-
-
-                <div class="alert alert-info">
-
-
-                    <h5>
-                        No Attendance Record Found
-                    </h5>
-
-
-                    <p class="mb-0">
-
-                        Click Check In button to start attendance.
-
-                    </p>
-
-
-                </div>
-
-                <br><br>
-
+                    <div class="alert alert-light border py-3 text-muted text-center mb-0">
+                        <i class="bi bi-info-circle me-1"></i> You haven't punched in today. Click <strong>Check In</strong> to begin your shift.
+                    </div>
                 @endif
-
-                <!-- Search & Filter Section -->
-
-                <div class="card shadow mb-4">
-
-                    <div class="card-header bg-dark text-white">
-
-                        <h5 class="mb-0">
-                            Attendance Search & Filter
-                        </h5>
-
-                    </div>
-
-
-                    <div class="card-body">
-
-
-                        <form method="GET"
-                            action="{{ route('attendance') }}">
-
-
-                            <div class="row g-3">
-
-
-                                <!-- Search -->
-
-                                <div class="col-md-5">
-
-
-                                    <label class="form-label">
-                                        Search Date
-                                    </label>
-
-
-                                    <input type="date"
-                                        name="search"
-                                        class="form-control"
-                                        value="{{ request('search') }}">
-
-
-                                </div>
-
-
-
-
-                                <!-- Status Filter -->
-
-                                <div class="col-md-4">
-
-
-                                    <label class="form-label">
-                                        Status
-                                    </label>
-
-
-                                    <select name="status"
-                                        class="form-select">
-
-
-                                        <option value="">
-                                            All Status
-                                        </option>
-
-
-                                        <option value="checked_in"
-                                            {{ request('status') == 'checked_in' ? 'selected' : '' }}>
-
-                                            Checked In
-
-                                        </option>
-
-
-                                        <option value="checked_out"
-                                            {{ request('status') == 'checked_out' ? 'selected' : '' }}>
-
-                                            Checked Out
-
-                                        </option>
-
-
-
-                                        <option value="working"
-                                            {{ request('status') == 'working' ? 'selected' : '' }}>
-
-                                            Working
-
-                                        </option>
-
-
-
-                                        <option value="completed"
-                                            {{ request('status') == 'completed' ? 'selected' : '' }}>
-
-                                            Completed
-
-                                        </option>
-
-
-                                    </select>
-
-
-                                </div>
-
-
-                                <!-- Buttons -->
-
-                                <div class="col-md-3 d-flex align-items-end gap-2">
-
-
-                                    <button type="submit"
-                                        class="btn btn-primary">
-
-                                        <i class="bi bi-search"></i>
-                                        Search
-
-                                    </button>
-
-
-
-                                    <a href="{{ route('attendance') }}"
-                                        class="btn btn-secondary">
-
-                                        Reset
-
-                                    </a>
-
-
-                                </div>
-
-
-
-                            </div>
-
-
-
-                        </form>
-
-
-
-                        <hr>
-
-
-                        <!-- Export Button -->
-
-
-                        <a href="{{ route('attendance.export', [
-                    'search'=>request('search'),
-                    'status'=>request('status')
-                ]) }}"
-                            class="btn btn-success">
-
-
-                            Export CSV
-
-
-                        </a>
-
-
-
-                    </div>
-
-
-                </div>
-
-                <hr>
-
-
-                <!-- Attendance History Section -->
-
-
-                <div class="card shadow mt-4">
-
-
-                    <div class="card-header bg-dark text-white">
-
-
-                        <h4 class="mb-0">
-
-                            Attendance History
-
-                        </h4>
-
-
-                    </div>
-
-
-                    <div class="card-body">
-
-
-                        @if($attendanceHistory->count() > 0)
-
-
-
-                        <div class="table-responsive">
-
-
-                            <table class="table table-bordered table-hover">
-
-
-                                <thead class="table-dark">
-
-
-                                    <tr>
-
-                                        <th>
-                                            #
-                                        </th>
-
-
-                                        <th>
-                                            Date
-                                        </th>
-
-
-                                        <th>
-                                            Check In
-                                        </th>
-
-
-                                        <th>
-                                            Check Out
-                                        </th>
-
-
-                                        <th>
-                                            Break Time
-                                        </th>
-
-
-                                        <th>
-                                            Working Hours
-                                        </th>
-
-                                        <th>Attendance</th>
-
-                                        <th>Late By</th>
-
-                                        <th>
-                                            Status
-                                        </th>
-
-
-                                    </tr>
-
-
-                                </thead>
-
-
-
-                                <tbody>
-
-                                    @foreach($attendanceHistory as $index=>$history)
-
-
-
-                                    <tr>
-
-                                        <td>
-
-                                            {{
-                                                $attendanceHistory->firstItem() + $index
-                                            }}
-
-                                        </td>
-
-
-                                        <td>
-
-
-                                            {{
-                                                $history->date->format('d-m-Y')
-                                            }}
-
-
-                                        </td>
-
-
-                                        <td>
-
-
-                                            {{
-                                                $history->check_in ?? '-'
-                                            }}
-
-
-                                        </td>
-
-
-                                        <td>
-
-
-                                            {{
-                                                $history->check_out ?? '-'
-                                            }}
-
-
-                                        </td>
-
-
-                                        <td>
-
-
-                                            {{
-                                                floor($history->total_break_seconds / 60)
-                                            }}
-
-                                            Minutes
-
-
-                                        </td>
-
-
-                                        <td>
-
-
-
-                                            @if($history->total_work_seconds)
-
-
-
-                                            {{
-                                                    floor($history->total_work_seconds / 3600)
-                                                }}
-                                            Hours
-
-
-
-                                            {{
-                                                    floor(
-                                                        ($history->total_work_seconds % 3600) / 60
-                                                    )
-                                                }}
-                                            Minutes
-
-
-
-                                            @else
-
-
-                                            -
-
-
-                                            @endif
-
-
-                                        </td>
-
-                                        <!-- NEW Attendance Status -->
-                                        <td>
-
-                                            @if($history->status == 'Late')
-
-                                            <span class="badge bg-danger">
-                                                Late
-                                            </span>
-
-                                            @else
-
-                                            <span class="badge bg-success">
-                                                On Time
-                                            </span>
-
-                                            @endif
-
-                                        </td>
-
-                                        <!-- NEW Late Minutes -->
-                                        <td>
-
-                                            {{ $history->late_minutes }} Minutes
-
-                                        </td>
-
-
-                                        <td>
-
-                                            @if($history->check_out)
-
-
-
-                                            <span class="badge bg-success">
-
-                                                Completed
-
-                                            </span>
-
-
-
-                                            @elseif($history->check_in)
-
-
-
-                                            <span class="badge bg-primary">
-
-                                                Working
-
-                                            </span>
-
-
-                                            @else
-
-
-                                            <span class="badge bg-secondary">
-
-                                                Absent
-
-                                            </span>
-
-                                            @endif
-
-
-                                        </td>
-
-
-                                    </tr>
-
-
-                                    @endforeach
-
-
-                                </tbody>
-
-
-                            </table>
-
-
-                        </div>
-
-
-
-                        @else
-
-
-
-                        <div class="alert alert-warning">
-
-
-                            No attendance history found.
-
-
-                        </div>
-
-
-
-                        @endif
-
-
-
-                    </div>
-
-
-                </div>
-
-                <!-- Pagination -->
-
-
-                @if($attendanceHistory->hasPages())
-
-
-                <div class="mt-4 d-flex justify-content-center">
-
-                    {{ $attendanceHistory->links() }}
-
-                </div>
-
-
-                @endif
-
-
-                <!-- Weekend Information -->
-
-
-                @if(now()->isWeekend())
-
-
-                <div class="alert alert-warning mt-4">
-
-
-                    <strong>
-                        Weekend Notice:
-                    </strong>
-
-
-                    Today is {{ now()->format('l') }}.
-
-
-                    Check-in is disabled on weekends.
-
-
-                </div>
-
-
-                @endif
-
-
             </div>
-
-
         </div>
 
+        <!-- Check Out Modal (Allows Early Departure Note if under 8 hours) -->
+        <div class="modal fade" id="checkOutModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-box-arrow-right me-1"></i> Confirm Shift Check-Out
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{{ route('check-out') }}">
+                        @csrf
+                        <div class="modal-body p-4">
+                            <p class="mb-3">Are you ready to clock out for today? Any running breaks will be finalized automatically.</p>
 
-        <!-- Bootstrap JS -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Early Departure Reason (Optional):</label>
+                                <textarea name="early_departure_reason" rows="2" class="form-control form-control-sm" placeholder="If you are checking out before completing the 8-hour shift, mention your reason here (e.g. Doctor appointment, client site visit)..."></textarea>
+                                <div class="form-text">Work under 8 hours will automatically be recorded with early departure minutes or half day.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm">
+                                <i class="bi bi-box-arrow-right me-1"></i> Confirm Check-Out
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
-        </script>
+        <!-- Monthly Performance Report Section -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-bar-chart-fill text-primary me-2"></i>Monthly Attendance Performance
+                    <span class="badge bg-primary ms-2">{{ $selectedMonth }}</span>
+                </h5>
 
-        <!-- Auto Refresh -->
+                <form method="GET" action="{{ route('attendance') }}" class="d-flex align-items-center gap-2">
+                    <input type="month" name="month" class="form-control form-control-sm" value="{{ $selectedMonthRaw }}">
+                    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                    <a href="{{ route('attendance') }}" class="btn btn-sm btn-outline-light">Reset</a>
+                </form>
+            </div>
 
+            <div class="card-body p-4">
+                <div class="row row-cols-2 row-cols-md-4 row-cols-lg-7 g-3 text-center mb-4">
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Present Days</small>
+                            <h4 class="fw-bold text-success mb-0">{{ $monthlyPresentDays }}</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Late Days</small>
+                            <h4 class="fw-bold text-warning mb-0">{{ $monthlyLateDays }}</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Overtime Days</small>
+                            <h4 class="fw-bold text-info mb-0">{{ $monthlyOvertimeDays }}</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Early Leaves</small>
+                            <h4 class="fw-bold text-danger mb-0">{{ $monthlyEarlyDepartureDays }}</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Leaves / WFH</small>
+                            <h4 class="fw-bold text-primary mb-0">{{ $monthlyLeaveDays + $monthlyWfhDays }}</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 11px;">Overtime Hours</small>
+                            <h4 class="fw-bold text-success mb-0">+{{ $monthlyOvertimeHours }}h</h4>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="p-3 border rounded bg-primary bg-opacity-10 border-primary shadow-sm">
+                            <small class="text-primary fw-bold d-block" style="font-size: 11px;">Payable Hours</small>
+                            <h4 class="fw-bold text-primary mb-0">{{ $monthlyNetPayableHours }}h</h4>
+                        </div>
+                    </div>
+                </div>
 
-        <script>
-            setTimeout(function() {
+                <!-- Punctuality / Attendance Progress Bar -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-1 small">
+                        <span class="fw-semibold">Monthly Attendance Score</span>
+                        <span class="fw-bold {{ $attendancePercentage >= 85 ? 'text-success' : ($attendancePercentage >= 70 ? 'text-warning' : 'text-danger') }}">{{ $attendancePercentage }}%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar {{ $attendancePercentage >= 85 ? 'bg-success' : ($attendancePercentage >= 70 ? 'bg-warning' : 'bg-danger') }}"
+                             role="progressbar" style="width: {{ min(100, $attendancePercentage) }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Attendance History Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-clock-history text-primary me-2"></i>Attendance Log History
+                </h5>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('attendance.calendar') }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                        <i class="bi bi-calendar3 me-1"></i> Calendar View
+                    </a>
+                    <a href="{{ route('attendance.timesheet') }}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                        <i class="bi bi-printer me-1"></i> Print Timesheet
+                    </a>
+                    <a href="{{ route('attendance.export', request()->all()) }}" class="btn btn-success btn-sm rounded-pill px-3">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Export CSV
+                    </a>
+                </div>
+            </div>
 
-                location.reload();
+            <!-- Filter & Search Toolbar -->
+            <div class="card-body p-3 bg-light border-bottom">
+                <form method="GET" action="{{ route('attendance') }}" class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="date" name="search" class="form-control" value="{{ request('search') }}" placeholder="Search by date">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="status" class="form-select form-select-sm">
+                            <option value="">-- Filter by Status / Type --</option>
+                            <option value="checked_in" {{ request('status') == 'checked_in' ? 'selected' : '' }}>Currently Working</option>
+                            <option value="checked_out" {{ request('status') == 'checked_out' ? 'selected' : '' }}>Checked Out (Completed)</option>
+                            <option value="late" {{ request('status') == 'late' ? 'selected' : '' }}>Late Arrival Only</option>
+                            <option value="overtime" {{ request('status') == 'overtime' ? 'selected' : '' }}>Overtime Shifts (> 8h)</option>
+                            <option value="early_departure" {{ request('status') == 'early_departure' ? 'selected' : '' }}>Early Departures (< 8h)</option>
+                            <option value="half_day" {{ request('status') == 'half_day' ? 'selected' : '' }}>Half Days (< 4h)</option>
+                            <option value="on_leave" {{ request('status') == 'on_leave' ? 'selected' : '' }}>Leaves & WFH</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
+                        <a href="{{ route('attendance') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                    </div>
+                </form>
+            </div>
 
+            <div class="card-body p-0">
+                @if($attendanceHistory->isEmpty())
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        <h6>No attendance records found</h6>
+                        <small>Try clearing filters or search query.</small>
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th class="ps-4">Date</th>
+                                    <th>Type</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Break</th>
+                                    <th>Work Duration</th>
+                                    <th>Overtime (OT)</th>
+                                    <th>Punctuality</th>
+                                    <th>Early Departure</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($attendanceHistory as $record)
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-dark">
+                                            {{ $record->date->format('d M Y') }}
+                                            <small class="text-muted d-block fw-normal">{{ $record->date->format('l') }}</small>
+                                        </td>
+                                        <td>
+                                            @if($record->attendance_type === 'on_leave')
+                                                <span class="badge bg-primary">On Leave</span>
+                                            @elseif($record->attendance_type === 'wfh')
+                                                <span class="badge bg-info text-dark">WFH</span>
+                                            @elseif($record->is_half_day)
+                                                <span class="badge bg-dark">Half Day</span>
+                                            @else
+                                                <span class="badge bg-light text-dark border">Present</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $record->check_in ? Carbon\Carbon::parse($record->check_in)->format('h:i A') : '-' }}</td>
+                                        <td>{{ $record->check_out ? Carbon\Carbon::parse($record->check_out)->format('h:i A') : ($record->check_in ? 'Working...' : '-') }}</td>
+                                        <td>{{ floor($record->total_break_seconds / 60) }}m</td>
+                                        <td class="fw-bold">{{ $record->getWorkHoursFormatted() }}</td>
+                                        <td>
+                                            @if($record->overtime_seconds > 0)
+                                                <span class="badge bg-success">{{ $record->getOvertimeFormatted() }}</span>
+                                            @else
+                                                <span class="text-muted small">-</span>
+                                            @endif
+                                        </td>
+                                        <td>{!! $record->getStatusBadge() !!}</td>
+                                        <td>
+                                            @if($record->early_departure_minutes > 0)
+                                                <span class="badge bg-danger">{{ $record->early_departure_minutes }}m early</span>
+                                                @if($record->early_departure_reason)
+                                                    <i class="bi bi-info-circle text-muted ms-1" title="{{ $record->early_departure_reason }}"></i>
+                                                @endif
+                                            @else
+                                                <span class="text-muted small">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
 
-            }, 30000);
-        </script>
+                    @if($attendanceHistory->hasPages())
+                        <div class="p-3 border-top d-flex justify-content-end">
+                            {{ $attendanceHistory->links('pagination::bootstrap-5') }}
+                        </div>
+                    @endif
+                @endif
+            </div>
+        </div>
 
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
-
 </html>
